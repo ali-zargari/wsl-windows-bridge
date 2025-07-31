@@ -133,7 +133,7 @@ python39 script.py
 python310 script.py
 ```
 
-## Advanced Features
+## Features
 
 ### Path Conversion
 
