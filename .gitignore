@@ -1,0 +1,27 @@
+# Dependencies
+node_modules/
+
+# Config files
+*.conf
+*.bak.*
+.wsl-win-bridge/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Test output
+test-results/
+coverage/
+
+# Temporary files
+*.tmp
+*.temp
+*.log

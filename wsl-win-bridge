@@ -1,0 +1,299 @@
+#!/bin/bash
+
+# WSL-Windows Bridge - Universal Windows Binary Wrapper Tool
+# Allows running Windows executables from WSL2 as if they were native Linux commands
+
+set -e
+
+# Configuration
+BRIDGE_DIR="$HOME/.wsl-win-bridge"
+BIN_DIR="$HOME/bin"
+CONFIG_FILE="$BRIDGE_DIR/config"
+WRAPPERS_DIR="$BRIDGE_DIR/wrappers"
+
+# Colors
+RED='\033[0;31m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+BLUE='\033[0;34m'
+NC='\033[0m'
+
+# Ensure directories exist
+mkdir -p "$BRIDGE_DIR" "$BIN_DIR" "$WRAPPERS_DIR"
+
+# Source library functions
+if [ -f "$HOME/.wsl-win-bridge/lib/detect-binary.sh" ]; then
+    # Installed version
+    source "$HOME/.wsl-win-bridge/lib/detect-binary.sh"
+    source "$HOME/.wsl-win-bridge/lib/create-wrapper.sh"
+    source "$HOME/.wsl-win-bridge/lib/config.sh"
+else
+    # Development version
+    SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    source "$SCRIPT_DIR/lib/detect-binary.sh"
+    source "$SCRIPT_DIR/lib/create-wrapper.sh"
+    source "$SCRIPT_DIR/lib/config.sh"
+fi
+
+# Show usage
+usage() {
+    cat << EOF
+WSL-Windows Bridge - Run Windows executables from WSL2
+
+Usage: $(basename "$0") <command> [options]
+
+Commands:
+    add <name> [path]     Add a new Windows binary wrapper
+                          If path is omitted, auto-detection is attempted
+    
+    remove <name>         Remove an existing wrapper
+    
+    list                  List all configured wrappers
+    
+    test <name>           Test if a wrapper is working correctly
+    
+    update                Update all wrappers to latest paths
+    
+    help                  Show this help message
+
+Examples:
+    $(basename "$0") add adb                    # Auto-detect Android ADB
+    $(basename "$0") add git "/mnt/c/Program Files/Git/bin/git.exe"
+    $(basename "$0") add code                   # Auto-detect VS Code
+    $(basename "$0") remove git
+    $(basename "$0") list
+
+Common Windows binaries that can be auto-detected:
+    - adb (Android Debug Bridge)
+    - git (Git for Windows)
+    - code (Visual Studio Code)
+    - node (Node.js)
+    - python (Python for Windows)
+    - docker (Docker Desktop)
+
+EOF
+}
+
+# Add a new wrapper
+add_wrapper() {
+    local name="$1"
+    local win_path="$2"
+    
+    if [ -z "$name" ]; then
+        echo -e "${RED}Error: Binary name required${NC}"
+        exit 1
+    fi
+    
+    # Check if wrapper already exists
+    if [ -f "$BIN_DIR/$name" ] && grep -q "wsl-win-bridge" "$BIN_DIR/$name" 2>/dev/null; then
+        echo -e "${YELLOW}Warning: Wrapper '$name' already exists${NC}"
+        read -p "Replace existing wrapper? (y/N) " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 0
+        fi
+    fi
+    
+    # Auto-detect if no path provided
+    if [ -z "$win_path" ]; then
+        echo -e "${BLUE}Auto-detecting $name...${NC}"
+        win_path=$(detect_binary "$name")
+        
+        if [ -z "$win_path" ]; then
+            echo -e "${RED}Error: Could not auto-detect $name${NC}"
+            echo "Please provide the full Windows path manually"
+            exit 1
+        fi
+        
+        echo -e "${GREEN}Found: $win_path${NC}"
+    fi
+    
+    # Verify the binary exists
+    if [ ! -f "$win_path" ]; then
+        echo -e "${RED}Error: Binary not found at $win_path${NC}"
+        exit 1
+    fi
+    
+    # Create the wrapper
+    create_wrapper "$name" "$win_path"
+    
+    # Save to config
+    save_wrapper_config "$name" "$win_path"
+    
+    echo -e "${GREEN}✓ Created wrapper '$name' for $win_path${NC}"
+    echo -e "You can now use '${BLUE}$name${NC}' as a command"
+    
+    # Test the wrapper
+    echo -e "\n${YELLOW}Testing wrapper...${NC}"
+    if "$BIN_DIR/$name" --version 2>/dev/null || "$BIN_DIR/$name" version 2>/dev/null || "$BIN_DIR/$name" -v 2>/dev/null; then
+        echo -e "${GREEN}✓ Wrapper is working!${NC}"
+    else
+        echo -e "${YELLOW}Note: Could not verify wrapper (binary might not support --version)${NC}"
+    fi
+}
+
+# Remove a wrapper
+remove_wrapper() {
+    local name="$1"
+    
+    if [ -z "$name" ]; then
+        echo -e "${RED}Error: Binary name required${NC}"
+        exit 1
+    fi
+    
+    if [ ! -f "$BIN_DIR/$name" ]; then
+        echo -e "${RED}Error: Wrapper '$name' not found${NC}"
+        exit 1
+    fi
+    
+    # Verify it's our wrapper
+    if ! grep -q "wsl-win-bridge" "$BIN_DIR/$name" 2>/dev/null; then
+        echo -e "${RED}Error: '$name' is not a WSL-Windows bridge wrapper${NC}"
+        exit 1
+    fi
+    
+    # Remove wrapper
+    rm -f "$BIN_DIR/$name"
+    
+    # Remove from config
+    remove_wrapper_config "$name"
+    
+    echo -e "${GREEN}✓ Removed wrapper '$name'${NC}"
+}
+
+# List all wrappers
+list_wrappers() {
+    echo -e "${BLUE}WSL-Windows Bridge Wrappers:${NC}"
+    echo
+    
+    local found=false
+    
+    # Check all files in bin directory
+    for wrapper in "$BIN_DIR"/*; do
+        if [ -f "$wrapper" ] && grep -q "wsl-win-bridge" "$wrapper" 2>/dev/null; then
+            found=true
+            local name=$(basename "$wrapper")
+            local win_path=$(grep -E '^exec "' "$wrapper" | sed 's/exec "//; s/" .*//' | head -1)
+            
+            echo -e "  ${GREEN}$name${NC} -> $win_path"
+            
+            # Check if binary still exists
+            if [ ! -f "$win_path" ]; then
+                echo -e "    ${RED}⚠ Binary not found!${NC}"
+            fi
+        fi
+    done
+    
+    if [ "$found" = false ]; then
+        echo -e "  ${YELLOW}No wrappers configured${NC}"
+        echo
+        echo -e "  Add your first wrapper with: ${BLUE}$(basename "$0") add <name>${NC}"
+    fi
+}
+
+# Test a wrapper
+test_wrapper() {
+    local name="$1"
+    
+    if [ -z "$name" ]; then
+        echo -e "${RED}Error: Binary name required${NC}"
+        exit 1
+    fi
+    
+    if [ ! -f "$BIN_DIR/$name" ]; then
+        echo -e "${RED}Error: Wrapper '$name' not found${NC}"
+        exit 1
+    fi
+    
+    echo -e "${BLUE}Testing wrapper '$name'...${NC}"
+    
+    # Check if it's our wrapper
+    if ! grep -q "wsl-win-bridge" "$BIN_DIR/$name" 2>/dev/null; then
+        echo -e "${RED}Error: '$name' is not a WSL-Windows bridge wrapper${NC}"
+        exit 1
+    fi
+    
+    # Get Windows path
+    local win_path=$(grep -E '^exec "' "$BIN_DIR/$name" | sed 's/exec "//; s/" .*//' | head -1)
+    
+    echo -e "Windows binary: $win_path"
+    
+    # Check if binary exists
+    if [ ! -f "$win_path" ]; then
+        echo -e "${RED}✗ Binary not found!${NC}"
+        exit 1
+    fi
+    
+    echo -e "${GREEN}✓ Binary exists${NC}"
+    
+    # Try to run it
+    echo -e "\nAttempting to run '$name --version'..."
+    if "$BIN_DIR/$name" --version 2>&1; then
+        echo -e "\n${GREEN}✓ Wrapper is working correctly!${NC}"
+    else
+        echo -e "\n${YELLOW}Note: Binary might not support --version flag${NC}"
+        echo -e "Try running '${BLUE}$name${NC}' with appropriate arguments"
+    fi
+}
+
+# Update all wrappers
+update_wrappers() {
+    echo -e "${BLUE}Updating all wrappers...${NC}"
+    echo
+    
+    local updated=0
+    local failed=0
+    
+    # Read config and update each wrapper
+    while IFS='=' read -r name win_path; do
+        if [ -n "$name" ] && [ -n "$win_path" ]; then
+            echo -e "Updating ${GREEN}$name${NC}..."
+            
+            # Try to detect new path
+            local new_path=$(detect_binary "$name")
+            
+            if [ -n "$new_path" ] && [ "$new_path" != "$win_path" ]; then
+                create_wrapper "$name" "$new_path"
+                save_wrapper_config "$name" "$new_path"
+                echo -e "  ${GREEN}✓ Updated to: $new_path${NC}"
+                ((updated++))
+            elif [ -f "$win_path" ]; then
+                echo -e "  ${BLUE}ℹ No update needed${NC}"
+            else
+                echo -e "  ${RED}✗ Binary not found, could not update${NC}"
+                ((failed++))
+            fi
+        fi
+    done < "$CONFIG_FILE" 2>/dev/null
+    
+    echo
+    echo -e "${GREEN}Updated: $updated${NC}, ${RED}Failed: $failed${NC}"
+}
+
+# Main command handler
+case "$1" in
+    add)
+        add_wrapper "$2" "$3"
+        ;;
+    remove|rm)
+        remove_wrapper "$2"
+        ;;
+    list|ls)
+        list_wrappers
+        ;;
+    test)
+        test_wrapper "$2"
+        ;;
+    update)
+        update_wrappers
+        ;;
+    help|--help|-h|"")
+        usage
+        ;;
+    *)
+        echo -e "${RED}Error: Unknown command '$1'${NC}"
+        echo
+        usage
+        exit 1
+        ;;
+esac
