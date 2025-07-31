@@ -44,7 +44,7 @@ WSL-Windows Bridge creates lightweight wrapper scripts that allow you to run Win
 ## Quick Start Example for README
 ```bash
 # Install
-curl -fsSL https://raw.githubusercontent.com/yourusername/wsl-windows-bridge/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/ali-zargari/wsl-windows-bridge/main/install.sh | bash
 
 # Add Android ADB
 wsl-win-bridge add adb
@@ -62,7 +62,7 @@ Tired of WSL2 not connecting to your Windows Android emulator? This tool solves 
 
 One command to install, one command to add ADB, and you're done! 
 
-⭐ https://github.com/yourusername/wsl-windows-bridge
+⭐ https://github.com/ali-zargari/wsl-windows-bridge
 
 #WSL2 #AndroidDev #OpenSource
 
@@ -76,7 +76,7 @@ If you've ever struggled with:
 
 This tool solves it all with a simple, elegant approach - no networking configuration needed!
 
-Check it out: https://github.com/yourusername/wsl-windows-bridge
+Check it out: https://github.com/ali-zargari/wsl-windows-bridge
 
 #OpenSource #WSL2 #DeveloperTools #AndroidDevelopment
 
@@ -99,6 +99,6 @@ adb devices  # Works instantly!
 
 It's not limited to ADB - works with any Windows executable!
 
-GitHub: https://github.com/yourusername/wsl-windows-bridge
+GitHub: https://github.com/ali-zargari/wsl-windows-bridge
 
 Would love your feedback and contributions!

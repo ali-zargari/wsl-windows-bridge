@@ -66,7 +66,7 @@ Before submitting:
 
 ```bash
 # Clone your fork
-git clone https://github.com/yourusername/wsl-windows-bridge
+git clone https://github.com/YOUR_USERNAME/wsl-windows-bridge
 cd wsl-windows-bridge
 
 # Make scripts executable

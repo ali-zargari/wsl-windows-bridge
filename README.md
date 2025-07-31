@@ -29,13 +29,13 @@ adb devices
 ### Method 1: Quick Install
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/yourusername/wsl-windows-bridge/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/ali-zargari/wsl-windows-bridge/main/install.sh | bash
 ```
 
 ### Method 2: Clone and Install
 
 ```bash
-git clone https://github.com/yourusername/wsl-windows-bridge
+git clone https://github.com/ali-zargari/wsl-windows-bridge
 cd wsl-windows-bridge
 ./install.sh
 ```
