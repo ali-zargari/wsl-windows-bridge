@@ -1,0 +1,37 @@
+name: Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - uses: actions/checkout@v3
+    
+    - name: Make scripts executable
+      run: |
+        chmod +x wsl-win-bridge
+        chmod +x install.sh
+        chmod +x test.sh
+        chmod +x lib/*.sh
+    
+    - name: Check syntax
+      run: |
+        bash -n wsl-win-bridge
+        bash -n install.sh
+        bash -n lib/*.sh
+    
+    - name: Test help command
+      run: ./wsl-win-bridge help
+    
+    - name: Test installation
+      run: |
+        # Mock home directory
+        export HOME=/tmp/test-home
+        mkdir -p $HOME
+        echo "5" | ./install.sh || true
