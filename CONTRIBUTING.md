@@ -38,13 +38,6 @@ To add auto-detection for a new Windows binary:
 4. Test your detection
 5. Submit a pull request
 
-### Code Style
-
-- Use bash best practices
-- Add comments for complex logic
-- Test on both Ubuntu and other WSL2 distributions
-- Ensure scripts work with spaces in paths
-
 ### Testing
 
 Before submitting:
